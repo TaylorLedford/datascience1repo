@@ -1,0 +1,442 @@
+
+---
+title: 'Data Science Project 2'
+author: 'YOUR NAMES HERE'
+date: 'Updated: `r format(Sys.time(), "%A, %B %d, %Y @ %X")`'
+output: html_document
+---
+
+<hr> 
+
+1. Use dplyr functions and pipes when possible.
+2. All graphs must be created using ggplot2.
+3. Use informative titles and axis labels.
+4. Use additional packages as needed.
+5. Document any nonstandard code.
+
+If you include any numerical values from analyses in your answers, be sure to code them with embedded r code rather than typing in the values by hand. For example, "2 + 2 = `r 2+2`" or "the current date is `r Sys.Date()`".
+
+```{r}
+# Load all packages you use here. 
+# Suppress warnings and messages.
+# Do not suppress the actual code.
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(Rmisc)
+options(scipen=999)
+anthropometric <- read.csv("https://raw.githubusercontent.com/STAT-JET-ASU/Datafiles/master/Instructor/anthropometric.csv")
+anthropometricGender <- subset(anthropometric, gender=="male" & ideal != "NA" | gender=="female" & ideal!="NA")
+```
+
+#### Problem 1
+
+The file `anthropometric.csv` contains body measurement data collected in some of Dr. Thomley's statistics classes. Students were also asked to report how tall they would like to be, if they could choose their own height. We are interested in exploring ideal height as a function of actual height, and whether gender seems to be a factor in that relationship.
+
+* gender = student's self-identified gender
+* height = measured height (inches)
+* armspan = measured fingertip to fingertip armspan (inches)
+* forearm = measured elbow to fingertip forearm length (inches) 
+* hand = measured wrist to fingertip length (inches)
+* leg = measured knee (back) to heel height (inches)
+* foot = measured heel to toe length (inches)
+* ideal = height the student would like to be (inches)
+* semester = semester in which the data was collected
+
+Note: There are only a few points with a gender other than male or female, so they will be excluded from the analyses due to insufficient sample size for linear modeling. You may opt to remove additional points you believe to be outliers, but you must provide justification for your choices. If you do not remove any additional points, explain why you chose not to.
+
+A) Create a scatterplot of height (x) versus ideal (y). Include:
+
+* fitted linear models by gender (males and females only)
+* model equations and R^2^ values shown on the plot
+* colors other than the ggplot2 defaults
+```{r}
+MODEL <- lm(anthropometricGender$ideal ~ anthropometricGender$height)
+MODEL
+coef(MODEL)
+residuals(MODEL)
+summary(MODEL)
+attributes(MODEL)
+
+
+
+ equation <- paste("y = ",round(coef(MODEL)[2],4),"x + ",round(coef(MODEL)[1],4), sep="")
+ sprintf("The fitted linear model is %s.", equation)
+
+scatterplot <- ggplot(anthropometricGender, aes(x = height, y = ideal,col = gender)) +
+  geom_point(color = "black") +
+  ggtitle("Measured Height vs Ideal Height") +
+  stat_smooth(method = lm) 
+scatterplot
+
+scatterplot + 
+  stat_smooth(method = lm, se = FALSE)
+scatterplot + 
+  stat_smooth(method = lm, fill="lightblue", alpha = .25) 
+scatterplot + 
+  stat_smooth(method=lm) +
+  geom_label(aes(x = mean(anthropometricGender$height), y = max(anthropometricGender$ideal), label = equation), size = 5)
+
+```
+B) Create scatterplots of height (x) versus ideal (y). Include:
+
+* faceting so the female plot is shown above the male plot
+* a line on each gender's scatterplot to indicate ideal = height
+* colored points to show where ideal height is >, <, or = height
+* a vertical line on each plot to show that gender's mean height
+* labels to indicate that the vertical lines are sample means
+* colors other than the ggplot2 defaults
+```{r}
+library(RColorBrewer)
+
+anthropometricGender["Difference"] <- ifelse(anthropometricGender$ideal - anthropometricGender$height > 0, ">", ifelse(anthropometricGender$ideal - anthropometricGender$height == 0, "=", "<"))
+
+anthropometricGender <- filter(anthropometricGender, !is.na(Difference))
+Male_mean <- mean(subset(anthropometricGender$height, anthropometricGender$gender == "male"))
+
+Female_mean <- mean(subset(anthropometricGender$height, anthropometricGender$gender == "female"))
+
+p <- ggplot(anthropometricGender, aes(x = height, y = ideal, col = Difference)) + geom_point() + geom_abline(intercept = 0, slope  = 1, color = "gold")
+p + facet_grid(gender ~.) +  scale_color_brewer(type = 'div', palette = 4, direction = 1) + theme_dark() + geom_vline(aes(xintercept = Male_mean)) + geom_vline(aes(xintercept = Female_mean)) +geom_text(aes(Male_mean,0,label = "Male Sample Mean", vjust = -1)) +  geom_text(aes(Female_mean,0,label = "Female Sample Mean", vjust = -1))
+```
+
+C) Show the loess-smoothed models for height (x) versus ideal height (y) by gender on a single plot, without any data points.
+```{r}
+ggplot(anthropometricGender, aes(x = height, y = ideal, col = gender)) +
+  geom_smooth(method="loess") +
+  labs(title = "Measured Height vs. Ideal Height") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_color_manual(values=c("pink", "blue"))
+
+```
+
+JUSTIFICATION FOR REMOVAL/NON-REMOVAL OF POINTS:
+
+QUESTION 1: Do people generally seem to be happy with their actual heights? Explain.
+
+Based on all three graphs available for intepretation, people are generally discontented with their height. Observing the loess-smoothed model for height versus ideal height, one can see that people's ideal height is higher than their actual listed height. For example, a male who is listed at 65 inches has an ideal height listed around 70 inches. The faceting graph available in graph "b" shows the difference in listed heights and ideal heights. The graph illustrates that the majority of people have a positive difference between ideal height and listed height which means that most people wish to be taller than their actual height. 
+
+QUESTION 2: Do males and females seem to feel differently about ideal height? Explain.
+
+Males seem to feel more strongly about their ideal height rather than females. The biggest difference in actual height and ideal height is seen in males. Graph "c" illustrates that with males who are shorter than 70 inches. Males who are listed less than 70 inches tall have an ideal height listed greater than 70 inches. The difference is a lot smaller in females. Graph "b" illustrates the same fact as guys have a greater differance than females between actual height and ideal height. 
+
+
+#### Problem 2
+
+The Excel file `powerball.xlsx` contains data on the winning numbers drawn and Jackpot amounts for the [Powerball Lottery](https://www.powerball.com/games/powerball) for the past several years. The current instructions for how to play Powerball, as published on the lottery's website, are as follows.
+
+* Powerball® costs $2 per play. 
+* Select five numbers from 1 to 69 for the white balls; then select one number from 1 to 26 for the red Powerball.
+* Choose your numbers on a play slip or let the lottery terminal randomly pick your numbers.
+* Jackpots start at $40 million and grow from there!
+* Players win a prize by matching one of the 9 Ways to Win.
+
+Players have always selected five white balls and one red ball. However, the Powerball lottery has had different rulesets over time with respect to how many white and red balls there are for players to choose from, which affects the chances of winning the various prizes. Data about the number of balls is also included in `powerball.xlsx`. In theory, drawings are random and independent, so all white balls are equally likely to be chosen. The same is true of all red balls. The Jackpot increases in value until someone wins and then it resets to its minimum value. 
+
+A) Use the `readxl` package to import all of the worksheets in `powerball.xls`. 
+```{r}
+library(readxl)
+powerball_test <- read_excel("powerball.xlsx" , sheet = 1)
+powerball_jackpot <- read_excel("powerball.xlsx" , sheet = 2)
+powerball_NumOfBalls <- read_excel("powerball.xlsx" , sheet = 3)
+powerball_inflation <- read_excel("powerball.xlsx" , sheet = 4)
+Num <- read_excel("powerball.xlsx", sheet = 3, col_names = FALSE, skip = 2)
+names(Num) <- c("startDate","white","red","combinations")
+Num_redBalls <- data.frame(Num$startDate)
+Num_redBalls[nrow(Num_redBalls)+1,] <- NA
+names(Num_redBalls) <- c("enddate")
+```
+
+B) Create a data frame/tibble containing the following variables.
+
+* startdate (date) -- starting date for a given ruleset
+* enddate (date) -- the ending date for a given ruleset
+* whiteballs (numeric) -- number of white balls to choose from
+* redballs (numeric) -- number of red balls to choose from
+* combinations (numeric) -- number of unique ticket combinations 
+```{r}
+df <- data.frame(powerball_NumOfBalls$startdate, Num_redBalls$enddate - 86400, powerball_NumOfBalls$whiteballs, powerball_NumOfBalls$redballs, powerball_NumOfBalls$combinations)
+names(df) <- c("startDate","endDate","whiteBalls","redBalls","combination")
+df$startDate <- as.Date(df$startDate,format="%Y-%m-%d")
+df$endDate <- as.Date(df$endDate,format="%Y-%m-%d")
+
+```
+
+C) Create a data frame/tibble containing the following variables.
+
+* drawdate (date) -- date the drawing took place
+* drawday (factor) -- day of the week the drawing took place
+* white1 (numeric) -- first white ball number
+* white2 (numeric) -- second white ball number
+* white3 (numeric) -- third white ball number
+* white4 (numeric) -- fourth white ball number
+* white5 (numeric) -- fifth white ball number
+* powerball (numeric) -- powerball (red) ball number
+* jackpot (numeric) -- total dollar value of the jackpot
+* jackpot2018 (numeric) -- jackpot value in 2018 dollars
+
+To adjust a dollar value for inflation, we multiply by the inflation factor, which is derived from the consumer price index. For example, suppose I had \$100 in 2016. Inflation from 2016 to 2017 is 2.11%. Therefore, \$100 in 2016 dollars is the equivalent of \$100 &times; 1.0211 = \$102.11 in 2017 dollars. Similarly, \$100 in 2015 dollars is 100 &times; 1.0207 &times; 1.0211 = \$104.22 in 2017 dollars, since the 2015 to 2016 inflation rate is 2.07%. So, \$100 in the past is actually worth more, relatively speaking, than \$100 now. Inflation data is included in the Excel file.
+```{r}
+#Renaming the columns
+names(powerball_jackpot) <- c("DrawDate", "jackpot")
+names(powerball_test) <- c("Date", "Winning Numbers", "Multiplier")
+#Separating Draw Date into the day of week and date
+powerball_jackpot <- powerball_jackpot %>% separate("DrawDate",into=c("Day", "Date"), extra="merge", remove=FALSE)
+#Setting the date columns to date type
+powerball_test$`Date` <- as.Date(powerball_test$`Date`, format="%Y-%m-%d")
+powerball_jackpot$`Date` <- as.Date(powerball_jackpot$`Date`, format = "%m/%d/%y")
+#Separating Date into the year to calculate the inflation
+powerball_jackpot <- powerball_jackpot %>% separate("Date",into=c("year"), remove=FALSE)
+#Making date a date type
+powerball_jackpot$`Date` <- as.Date(powerball_jackpot$`Date`)
+#Making year a numeric type
+powerball_jackpot$`year` <- as.numeric(powerball_jackpot$`year`)
+#Join all columns into arbitary data frame(Couldn't get it to work otherwise)
+df1 <- powerball_jackpot %>% inner_join(powerball_test, by="Date")
+#Separate winning numbers by ball
+df1 <- df1 %>% separate("Winning Numbers", into=c("white1", "white2", "white3", "white4", "white5", "powerball"))
+#Joining all data into arbitary data frame
+df1 <- df1 %>% inner_join(powerball_inflation, by="year")
+#Separating jackpot to get the amount for inflation
+df1 <- df1 %>% separate(jackpot, into=c("sign","jackpot1"), remove=FALSE)
+#Making sure jackpot is numeric
+df1$jackpot1 <- as.numeric(df1$jackpot1)
+#Making it back into millions
+df1$jackpot1 <- df1$jackpot1 * 1000000.00
+#Making sure jackpot is numeric
+is.numeric(df1$jackpot1)
+#Making jackpot in 2018 
+df1$jackpot2018 <- df1$inflation * df1$jackpot1 + df1$jackpot1
+#Putting correct columns into one data frame
+final_df2 <- subset(df1,select=c("Date","Day", "white1","white2","white3","white4","white5","powerball","jackpot1", "jackpot2018"))
+#Setting data to correct type(Last couple lines)
+final_df2$Day <- as.factor(final_df2$Day)
+final_df2$jackpot1 <- as.numeric(final_df2$jackpot1)
+final_df2$`white1` <- as.numeric(final_df2$`white1`)
+final_df2$`white2` <- as.numeric(final_df2$`white2`)
+final_df2$`white3` <- as.numeric(final_df2$`white3`)
+final_df2$`white4` <- as.numeric(final_df2$`white4`)
+final_df2$`white5` <- as.numeric(final_df2$`white5`)
+final_df2$powerball <- as.numeric(final_df2$powerball)
+is.numeric(final_df2$jackpot1)
+```
+
+D) Create a grouped barplot that shows the number of red and white balls for each ruleset. 
+```{r}
+library(reshape2)
+df.d <- subset(df,select=c("startDate","endDate","whiteBalls","redBalls"))
+df.d <- melt(df.d, id=c("startDate", "endDate"))
+ggplot(df.d, aes(x=startDate,y=value, fill=variable)) + 
+    geom_bar(position="dodge", stat="identity") +
+    scale_fill_manual(values=c("blue", "red")) +
+    theme_classic()
+```
+E) Create a barplot that shows the number of unique ticket combinations for each ruleset. Set the widths of the bars so they reflect the relative proportion of time each ruleset was in use in our dataset. 
+```{r}
+today <- Sys.Date()
+df.e <- subset(df, select=c("startDate","endDate","combination"))
+df.e <- melt(df.e, id=c("startDate", "endDate"))
+time <- as.numeric(today-df.e$startDate[1])
+df.e$time_passed <- as.numeric((df.e$endDate-df.e$startDate)/time)
+df.e$time_passed[9] <- as.numeric((today-df.e$startDate[9])/time)
+width <- c(df.e$time_passed[1],df.e$time_passed[2],df.e$time_passed[3],df.e$time_passed[4],df.e$time_passed[5],df.e$time_passed[6],df.e$time_passed[7],df.e$time_passed[8],df.e$time_passed[9])
+ggplot(df.e, aes(x=as.factor(startDate),y=value, width=width * 2)) +
+    geom_bar(stat="identity", position="identity", fill="red") + 
+    theme_classic() +
+    labs(x="Date",y="Number of Combinations",title="Number of Combinations by Ruleset")
+```
+
+F) Create a visualization to show the realtive frequencies of occurrance of each red ball number. Be sure to account in some way for the fact that the number of red balls to choose from has changed over time.
+```{r}
+Fdf_2010 <- subset(final_df2, select=c("powerball"), Date>=2010 & Date<as.Date("2012-01-15"))
+Fdf_2012 <- subset(final_df2, select=c("powerball"), Date>=as.Date("2012-01-15") & Date<as.Date("2015-10-07"))
+Fdf_2015 <- subset(final_df2, select=c("powerball"), Date>=as.Date("2015-10-07"))
+Frel_2010 <- data.frame(prop.table(table(Fdf_2010)))
+Frel_2012 <- data.frame(prop.table(table(Fdf_2012)))
+Frel_2015 <- data.frame(prop.table(table(Fdf_2015)))
+Frel_2010 <- merge(Frel_2010, Frel_2012, by.x=1, by.y=1, all.x = TRUE)
+Frel_2010 <- merge(Frel_2010, Frel_2015, by.x=1, by.y=1, all.x = TRUE)
+names(Frel_2010) <- c("ball_num","Freq_2010","Freq_2012","Freq_2015")
+powerball_2010 <- ggplot(Frel_2010, aes(x=ball_num, y=Freq_2010)) +
+  geom_histogram(stat="identity") +
+  labs(x="2010-2012 Ruleset", title="Relative Frequency by Time Period", y="Freq") +
+   theme_classic()
+powerball_2012 <- ggplot(Frel_2010, aes(x=ball_num, y=Freq_2012)) +
+  geom_histogram(stat="identity") +
+  labs(x="2012-2015 Ruleset",y="Relative Frequency") +
+   theme_classic()
+powerball_2015 <- ggplot(Frel_2010, aes(x=ball_num, y=Freq_2015)) +
+  geom_histogram(stat="identity") +
+ labs(x="Current Ruleset", y="Freq") +
+   theme_classic()
+multiplot(powerball_2010,powerball_2012,powerball_2015) +
+  theme_classic()
+
+```
+
+G) Create a visualization to show the relative frequencies of occurrance of each white ball number. You will need to pool all the white ball data since the white numbers are all drown from the same bin. Be sure to account for the fact that the number of white balls to choose from has changed over time.
+```{r}
+Wdf_2010 <- subset(final_df2, select=c("white1","white2","white3","white4","white5"), Date>=2010 & Date<as.Date("2015-10-07"))
+Wdf_2015 <- subset(final_df2, select=c("white1","white2","white3","white4","white5"), Date>=as.Date("2015-10-07"))
+G2010 <- gather(Wdf_2010, key="num_balls", value=c("white1","white2","white3","white4","white5"))
+G2015 <- gather(Wdf_2015, key="num_balls", value=c("white1","white2","white3","white4","white5"))
+names(G2010) <- c("type","numOfBall")
+names(G2015) <- c("type","numOfBall")
+G2010 <- subset(G2010, select = "numOfBall")
+G2015 <- subset(G2015, select = "numOfBall")
+Grel_2010 <- data.frame(prop.table(table(G2010)))
+Grel_2015 <- data.frame(prop.table(table(G2015)))
+Grel_2010 <- merge(Grel_2010, Grel_2015, by.x=1, by.y=1, all.x = TRUE)
+names(Grel_2010) <- c("ball_num","Freq_2010","Freq_2015")
+powerball_2010 <- ggplot(Grel_2010, aes(x=ball_num, y=Freq_2010)) +
+  geom_histogram(stat="identity") +
+  labs(x="2010-2015 Ruleset", title="Relative Frequency by Time Period", y="Relative Frequency") +
+  theme_classic()
+powerball_2015 <- ggplot(Grel_2010, aes(x=ball_num, y=Freq_2015)) +
+  geom_histogram(stat="identity") +
+ labs(x="Current Ruleset", y=" Relative Frequency") +
+  theme_classic()
+multiplot(powerball_2010,powerball_2015)
+
+```
+H) Create a time series plot that shows the value of the Jackpot over time, both in original dollars and adjusted dollars. Indicate in some way the point(s) in time at which the minimum Jackpot value increased.
+```{r}
+ggplot() +
+  geom_line(data=final_df2, aes(x=Date, y=jackpot1), color="red") +
+  geom_line(data=final_df2, aes(x=Date, y=jackpot2018), color="white") + 
+  scale_y_continuous(limits=c(1000000,100000000), breaks=c(1000000,20000000,40000000,60000000,80000000,100000000)) +
+  geom_point(aes(x=as.Date("2012-01-18"),y=40000000))
+```
+
+QUESTION 1: Does it appear that the white numbers are equally likely to occur? Explain.
+Yes. The relative frequency, especially for 2010 to 2015 data, convey a pretty even distribution across all numbers.Furthermore, the number have white numbers increase in proportion to the decrease in number of red number. This means that the probability to select a white number in relation to a red number is similiar in the past. 
+
+QUESTION 2: Does it appear that the red numbers are equally likely to occur? Explain.
+Yes, the relative frequency appears to have an even distribution across all numbers. Similar with the red numbers, the number of red balls decrease proportionally to the increase in white numbers. Meaning that the probability of selecting a red number in relation to a red number is similar as in the past.  
+
+QUESTION 3: Are Jackpots larger now than in the past?
+  Jackpots are larger now than in the past according to the time series plot that offers a visualization of the change in jackpots between 2010 and 2018. Observing the graph, there is a significant increase in jackpot value from between 2010 and 2012 and this trend has only stabilized at the upper-end of the jackpot value. 
+
+#### Problem 3
+
+Create one additional visualization using the anthropometric data and one additional visualization using the powerball data. Choose something that interests you&mdash;perhaps a plot type we have not used in either project. They should not be too similar to the plots you have already created above. You will present these to the class during the final exam period as well as including them in this document.
+
+```{r}
+library(reshape)
+library(Rmisc)
+
+Anthro_compare <- subset(anthropometricGender, anthropometricGender$Difference == "=")
+Anthro_compare <- subset(Anthro_compare, Anthro_compare$gender == "male")
+Anthro_compare <- filter(Anthro_compare, !is.na(foot))
+Anthro_compare <- filter(Anthro_compare, !is.na(armspan))
+Anthro_compare <- Anthro_compare[,1:9]
+Anthro_compare <- melt(Anthro_compare, id = c("gender","semester","ideal"))
+
+ideal_male_distrubition <- ggplot(Anthro_compare, aes(value, fill = variable, color = variable)) + geom_density(alpha = .1) + theme_dark() + ggtitle("Ideal Male distributions")
+
+Anthro1_compare <- subset(anthropometricGender, anthropometricGender$Difference == "=")
+Anthro1_compare <- subset(Anthro1_compare, Anthro1_compare$gender == "female")
+Anthro1_compare <- filter(Anthro1_compare, !is.na(foot))
+Anthro1_compare <- filter(Anthro1_compare, !is.na(armspan))
+Anthro1_compare <- Anthro1_compare[,1:9]
+Anthro1_compare <- melt(Anthro1_compare, id = c("gender","semester","ideal"))
+ideal_female_distrubution <- ggplot(Anthro1_compare, aes(value, fill = variable, color = variable)) + geom_density(alpha = .1) + theme_dark() + ggtitle("Ideal Female distributions")
+
+Anthro1_compare <- subset(anthropometricGender, anthropometricGender$Difference != "=")
+Anthro1_compare <- subset(Anthro1_compare, Anthro1_compare$gender == "female")
+Anthro1_compare <- filter(Anthro1_compare, !is.na(foot))
+Anthro1_compare <- filter(Anthro1_compare, !is.na(armspan))
+Anthro1_compare <- Anthro1_compare[,1:9]
+Anthro1_compare <- melt(Anthro1_compare, id = c("gender","semester","ideal"))
+female_distrubution <- ggplot(Anthro1_compare, aes(value, fill = variable, color = variable)) + geom_density(alpha = .1) + theme_dark() + ggtitle("Non-ideal Female distributions")
+
+
+Anthro_compare <- subset(anthropometricGender, anthropometricGender$Difference != "=")
+Anthro_compare <- subset(Anthro_compare, Anthro_compare$gender == "male")
+Anthro_compare <- filter(Anthro_compare, !is.na(foot))
+Anthro_compare <- filter(Anthro_compare, !is.na(armspan))
+Anthro_compare <- Anthro_compare[,1:9]
+Anthro_compare <- melt(Anthro_compare, id = c("gender","semester","ideal"))
+
+male_distrubition <- ggplot(Anthro_compare, aes(value, fill = variable, color = variable)) + geom_density(alpha = .1) + theme_dark() + ggtitle("Non-ideal Male distributions")
+
+multiplot(ideal_male_distrubition,male_distrubition, ideal_female_distrubution,female_distrubution, cols = 2)
+
+
+
+
+
+
+```
+```{r}
+library(Rmisc)
+library(plotly)
+
+for ( i in 1:3)
+{  
+  #year 2018 20% probability anyone wins the jackpot
+  Winners <- subset(df1, df1$year == 2014)
+  sum <- 0
+  x <- numeric(104)
+  i <- 1
+  for (w in Winners$jackpot1)
+  {
+    check <- sample(1:5,1)
+    check
+    ifelse(check == 1, sum <- sum + w, sum <- sum)
+    x[i] <- sum
+    i <- i + 1
+  }
+  time <- seq(1,104,1)
+  Winners_2014 <- data.frame(time,x)
+  #year 2017 
+  Winners <- subset(df1, df1$year == 2017)
+  sum <- 0
+  x <- numeric(104)
+  i <- 1
+  for (w in Winners$jackpot1)
+  {
+    check <- sample(1:5,1)
+    ifelse(check == 1, sum <- sum + w, sum <- sum)
+    x[i] <- sum
+    i <- i + 1
+  }
+  time <- seq(1,104,1)
+  Winners_2017 <- data.frame(time,x)
+
+#year 2016 20% probability anyone wins the jackpot
+  Winners <- subset(df1, df1$year == 2016)
+  sum <- 0
+  x <- numeric(105)
+  i <- 1
+  for (w in Winners$jackpot1)
+  {
+    check <- sample(1:5,1)
+    check
+    ifelse(check == 1, sum <- sum + w, sum <- sum)
+    x[i] <- sum
+    i <- i + 1
+  }
+  time <- seq(1,105,1)
+  Winners_2016 <- data.frame(time,x)
+  winning14 <- ggplot(Winners_2014, aes(x = time, y = x)) + geom_line(color = "green") + ggtitle("2014                  2016                 2017")  +  xlab("# of drawings") + ylab("$$$$$") +   scale_y_continuous(limits = c(0,4500000000))
+  winning17 <- ggplot(Winners_2017, aes(x = time, y = x)) + geom_line(color = "blue") +   xlab("# of drawings")+ ylab("$$$$$") + scale_y_continuous(limits = c(0,4500000000))
+  winning16 <- ggplot(Winners_2016, aes(x = time, y = x)) + geom_line(color ="red") + xlab("# of drawings")+ ylab("$$$$$") +  scale_y_continuous(limits = c(0,4500000000))
+
+  
+  j <- ggplotly(winning14)
+  f <- ggplotly(winning16)
+  k <- ggplotly(winning17)
+  print(subplot(j,f,k))
+ 
+  
+
+}
+
+
+
+```
+<hr>
+
+DONE!!!
+

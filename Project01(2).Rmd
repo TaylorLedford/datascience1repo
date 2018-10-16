@@ -1,0 +1,208 @@
+---
+title: 'Data Science Project 1'
+author: 'YOUR NAMES HERE'
+date: 'Updated: `r format(Sys.time(), "%A, %B %d, %Y @ %X")`'
+output: html_document
+---
+
+<hr> 
+
+#### DATA FILES
+
+* [Source and description of MLCO2annual dataset](ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_annmean_mlo.txt)
+
+* [MLC02annual dataset](https://raw.githubusercontent.com/STAT-JET-ASU/DataScience1/master/Projects/MLCO2annual.csv) (comma delimited text file)
+
+* [Source and description of MLCO2monthly dataset](ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_mm_mlo.txt)
+
+* [MLCO2monthly dataset](https://raw.githubusercontent.com/STAT-JET-ASU/DataScience1/master/Projects/MLCO2monthly.csv) (comma delimited text file)
+
+* [Source and description of MLCO2weekly dataset](ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_weekly_mlo.txt)
+
+* [MLCO2weekly dataset](https://raw.githubusercontent.com/STAT-JET-ASU/DataScience1/master/Projects/MLCO2weekly.csv) (comma delimited text file)
+
+
+```{r}
+# Read in the datasets and load any necessary packages here
+# Suppress the code and any messages / warnings it produces
+
+library(ggplot2)
+library(dplyr)
+
+weekly <- read.csv("https://raw.githubusercontent.com/STAT-JET-ASU/DataScience1/master/Projects/MLCO2weekly.csv")
+monthly <- read.csv("https://raw.githubusercontent.com/STAT-JET-ASU/DataScience1/master/Projects/MLCO2monthly.csv")
+annual <- read.csv("https://raw.githubusercontent.com/STAT-JET-ASU/DataScience1/master/Projects/MLCO2annual.csv")
+annual2017 <- subset(annual, year > 1999 & year < 2018)
+monthly2014 <- subset(monthly, date > 2014)
+monthlyDecade <- subset(monthly, year > 1959 & year < 2010)
+weekly21 <- subset(weekly, year > 1999 & year < 2018 & CO2ppm > -999.99 & oneyear > -999.99 & tenyear > -999.99 & since1800 > -999.99)
+monthly1960 <- subset(monthly, year > 1959 & year < 1970)
+annualX <- c(annual$year)
+monthlyExclude <- subset(monthly, year >= 2000 & year != 2018)
+
+
+```
+
+
+
+
+
+
+#### DATA VISUALIZATIONS
+
+Use only the three datasets provided. In some cases, you will have to create new variables or perform your own calculations / transformations. When replicating graphs, you do not have to include the round NOAA and Scripps badges or the March 2018 date stamps.
+
+* Replicate the content of the graph shown on [this page](https://www.esrl.noaa.gov/gmd/ccgg/trends/index.html).
+```{r}
+ylab.text = expression('RECENT MONTHLY MEAN AT CO'['2']*' AT MAUNA LOA')
+
+ggplot(monthly2014, aes(date)) +
+  geom_point(aes(y = interpolated), shape=23, fill="red", color="red") + 
+  geom_point(aes(y = trend), shape=15, fill="black", color="black") +
+  geom_line(aes(y=interpolated), color="red", linetype=2) +
+  geom_line(aes(y=trend), color="black") +
+  labs(x="YEAR", y="PARTS PER MILLION", title=ylab.text) +
+  theme_linedraw() + 
+  coord_cartesian(xlim=c(2014,2019), ylim=c(395,410)) +
+  theme_classic()
+
+
+annual <- read.csv("https://raw.githubusercontent.com/STAT-JET-ASU/DataScience1/master/Projects/MLCO2annual.csv")
+
+```
+
+
+* Replicate the content of the graph shown on [this page](https://www.esrl.noaa.gov/gmd/ccgg/trends/full.html).
+```{r}
+ycount = seq(300, 400, by = 20)
+xcount = seq(1950,2020, by = 10)
+ggplot(monthly, aes(x = date )) + geom_line(aes(y = trend), color = "black") + labs(x = "YEAR", y = "PARTS PER MILLION", title = expression('Atmoshperic CO'['2']*' at Mauna Loa Observatory')) + scale_y_continuous(breaks = ycount) + scale_x_continuous(breaks = xcount ,limits = c(1955,2020)) + geom_line(aes(y = interpolated), color = "red") + 
+  theme_classic()
+```
+
+* Replicate the content of the graph shown on [this page](https://www.esrl.noaa.gov/gmd/ccgg/trends/gr.html).
+```{r}
+library(ggplot2)
+
+
+yearly <- read.csv("https://raw.githubusercontent.com/STAT-JET-ASU/DataScience1/master/Projects/MLCO2growth.csv")
+ylab.text = expression('ANNUAL MEAN GROWTH AT CO'['2']*' AT MAUNA LOA')
+xvector <- seq(1960, 2010, by = 10)
+yvector <- seq(0, 3, by = 0.5)
+
+yearlya <- yearly %>% group_by(year)
+yearly_a <- yearlya %>% filter(year>=1960 & year <=1969)
+a <- mean(yearly_a$ppm.per.year)
+
+yearlyb <- yearly %>% group_by(year)
+yearly_b <- yearlyb %>% filter(year>=1970 & year <=1979)
+b <- mean(yearly_b$ppm.per.year)
+
+yearlyc <- yearly %>% group_by(year)
+yearly_c <- yearlyc %>% filter(year>=1980 & year <=1989)
+c <- mean(yearly_c$ppm.per.year)
+
+yearlyd <- yearly %>% group_by(year)
+yearly_d <- yearlya %>% filter(year>=1990 & year <=1999)
+d <- mean(yearly_d$ppm.per.year)
+
+yearlye <- yearly %>% group_by(year)
+yearly_e <- yearlya %>% filter(year>=2000 & year <=2009)
+e <- mean(yearly_e$ppm.per.year)
+
+ggplot(yearly, aes(year)) +
+  geom_col(aes(y = ppm.per.year), shape=23, fill="turquoise1") +
+ scale_x_continuous(breaks = xvector) +
+ scale_y_continuous(breaks = yvector) +
+  geom_segment(aes(x = 1959, y = a, xend = 1968, yend = a)) +
+  geom_segment(aes(x = 1969, y = b, xend = 1978, yend = b)) +
+  geom_segment(aes(x = 1979, y = c, xend = 1988, yend = c)) +
+  geom_segment(aes(x = 1989, y = d, xend = 1998, yend = d)) +
+  geom_segment(aes(x = 1999, y = e, xend = 2008, yend = e)) +
+  theme_classic() +
+  ggtitle(expression("annual mean growth rate of CO"[2]*" AT MAUNA LOA"))
+```
+
+
+
+* Using the monthly data, create side-by-side boxplots of CO2 by decade. Exclude the 1950s (1959 and before) and 2010s (2010 and after) because the data for those decades is incomplete.
+```{r}
+monthlynew <- monthly %>% 
+              filter(year > 1959 & year < 2010) %>%
+              mutate(decade = ifelse(year >= 1960 & year < 1970, "1960s", 
+                                     ifelse(year >= 1970 & year < 1980, "1970s", 
+                                            ifelse(year >= 1980 & year < 1990, "1980s", 
+                                                   ifelse(year >= 1990 & year < 2000, "1990s", "2000s")))))
+
+
+
+boxplot(interpolated~decade, data = mutate(monthlyDecade, decade = ifelse(year >= 1960 & year < 1970, "1960s", ifelse(year >= 1970 & year < 1980, "1970s", ifelse(year >= 1980 & year < 1990, "1980s", ifelse(year >= 1990 & year < 2000, "1990s", "2000s"))))), col = c("red","blue","green", "yellow"), main = expression("CO"[2]*" by Decade"))
+
+```
+
+* Use the [`multiplot`](http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/) function from the `Rmisc` package to create a display for the 21st century that includes four stacked plots. Exclude the incomplete 2018 data.
+    + barplot of mean CO2 for each year with error bars showing uncertainty (using annual data)
+
+    + side-by-side boxplots of CO2 by year (using weekly data)
+
+    + side-by-side boxplots of adjusted CO2 by year (using monthly data)
+
+    + a time series plot showing the change in CO2 for one year, 10 years, and since 1800 (using weekly data)
+```{r}
+library(Rmisc)
+library(dplyr)
+df1 <- subset(weekly21, select = c(year, CO2ppm, oneyear, tenyear, since1800))
+df2 <- subset(weekly21, select = c(CO2ppm, oneyear, tenyear, since1800))
+df2 <- transmute(weekly21, oneyear2 = CO2ppm - oneyear, tenyear2 = CO2ppm - tenyear, since1800 = since1800)
+ChangesInCO2 <- ts(data=df2, start=2000, freq=52)
+
+par(mfrow = c(2, 2))
+
+p1 <- ggplot(annual2017, aes(x = year, y = mean)) +
+  geom_bar(stat="identity") +
+  theme_classic() +
+  geom_errorbar(aes(x=year, ymax = mean + unc, ymin = mean - unc), width = .1) +
+  labs(x= 'Year', title = expression("Average CO"[2]*""))
+
+p2 <- ggplot(weekly21, aes(x=year, y=CO2ppm, group=year)) +
+  labs(x= "Year", y= expression("CO"[2]*"ppm"), title = expression("CO"[2]*" Yearly Growth")) +
+  geom_boxplot() +
+  theme_classic()
+
+p3 <- ggplot(monthlyExclude, aes(x=year, y=trend, group=year)) +
+  labs(x= "Year", y= "Parts Per Million", title = expression("Adjusted CO"[2]*"")) +
+  geom_boxplot() +
+  theme_classic()
+
+p4 <- ggplot() + 
+  geom_line(data = df1, aes(x = year, y = CO2ppm - oneyear), color = "blue") +
+  geom_line(data = df1, aes(x = year, y = CO2ppm - tenyear), color = "green") +
+  geom_line(data = df1, aes(x = year, y = since1800), color = "purple") +
+  labs(x='Year', title =expression("CO"[2]*" Change")) +
+  theme_classic()
+
+ts <- ts(ChangesInCO2, start = 2000)
+
+plot.ts(ts, main=expression("CO"[2]*" Change"))
+
+multiplot(p1,p2,p3,p4,cols=2)
+
+```
+#### QUESTIONS
+
+1) Discuss briefly how these data were collected.
+
+ANSWER: The Manua Loa observatory is located at an altitude of 3400 meters, meaning measurement for air masses can be interpreted for a very large area. Air is slowly siphon through a cylindrical cell with windows on both ends. To analyze the air mass in the cylindrical cell, an infrared light is transmitted through the cell and is measured by a infrared detector. Carbon dioxide is known to absorb infrared radiation so the CO2 in the cell will also absorb infrared light. If there is a high amount of CO2 in the cell, more absorbtion will be observed, leaving less light to hit the detector. The detector signal is turned into a measure of the amount of CO2 in mole fraction, and from here, scientist can figure out what molecules is contained in the cell such as nitrogen, oxygen, and in this case, CO2 and interpret it to a larger area. 
+
+2) What trend(s) or patterns over time do you observe in the CO<sub>2</sub> graphs?
+
+ANSWER: Observing all the graphs provided, CO2 at Mauna Loa from the earliest data recorded, 1969, to the latest 2017, has progressively increased. It is hard to disput against this conclusion as the annual mean growth at Mauna Loa graph has shown that the annual mean of each decade, as potrayed by the solid horizontal black line, is increasing, and will continue too. The yearly growth also comes to the same conclusion with yearly CO2 growth growing between 2000 and 2016. Another graph that leads to this same conclusion is the "Atmospheric CO2 at Manua Loa Observatory" which indicates a trend in Parts per Million of CO2 in the atmosphere increasing between 1960 and predicting to continue to increase in 2020 as well. 
+
+3) In what way could these analyses be used to support the theory of anthropogenic (man-made) climate change? Why are data and graphs such as these *evidence* rather than *proof*?
+
+ANSWER: These analyses can be used to support the theory of anthropogennic climate change if scientist can observe data regarding CO2 in the atmospheres before the industrial age when the industry age exploded, and fossil fuel was first being used, and compare to CO2 in the atmospheres after the industrial age. Comparing two difference time periods, before industrial age and after, is important to support the theory of anthropogenic climate change. If scientists observe that an expotential increse trend exists after the industrial age that shows the rate of CO2 growing at a faster rate than before the industrial age, then the evidence will suport the theory. These graphs are evidence because they are data which were collected over decades of research rather than just release without any explaination. It is diffuclt to destoy the argument of anthropogennic climate change with these data as evidence. Proofs are more theoretical while evidences are built on research and can be calcultated. 
+
+<hr>
+
+DONE!!!
+

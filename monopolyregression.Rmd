@@ -1,0 +1,110 @@
+---
+title: "Monopoly Regression Example"
+author: "Jill Thomley"
+date: "4/11/2018"
+output: html_document
+---
+
+
+```{r, echo=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+DATA <- read.csv("monopoly.csv")
+glimpse(DATA)
+DATA %>% summarize(Spaces_Mean = mean(spaces),
+                   Prices_Mean = mean(price))
+cor(DATA$spaces, DATA$price)
+```
+
+
+```{r}
+sprintf("The correlation between number of spaces from go and price is %1.4f.", cor(DATA$spaces, DATA$price))
+
+scatterplot <- ggplot(DATA, aes(x = spaces, y = price)) +
+                 geom_point() +
+                 ggtitle("Price vs. Spaces from Go for Monopoly Properties")
+scatterplot
+scatterplot + 
+  stat_smooth(method = lm)
+scatterplot + 
+  stat_smooth(method = lm, se = FALSE)
+scatterplot + 
+  stat_smooth(method = lm, fill="lightblue", alpha = .25)
+scatterplot + 
+  stat_smooth(method = lm, aes(color = "linear model"), fill="pink")
+scatterplot + 
+  stat_smooth(method = lm, aes(color = "linear model"), se = FALSE) +
+  stat_smooth(method = loess, aes(color = "loess model"), se = FALSE) +
+  labs(color = "smoothing")
+```
+
+
+```{r}
+MODEL <- lm(DATA$price ~ DATA$spaces)
+MODEL
+coef(MODEL)
+residuals(MODEL)
+summary(MODEL)
+attributes(MODEL)
+```
+
+
+```{r}
+# One way to print the fitted linear model equation or add it to the scatterplot
+
+equation <- paste("y = ",round(coef(MODEL)[2],4),"x + ",round(coef(MODEL)[1],4), sep="")
+
+sprintf("The fitted linear model is %s.", equation)
+
+scatterplot + 
+  stat_smooth(method=lm) +
+  geom_text(aes(x = mean(DATA$spaces), y = max(DATA$price), label = equation), size = 5)
+```
+
+
+```{r}
+# A user-created function to add some model information to the scatterplot + lm
+
+ggplotRegression <- function (fit) {
+
+require(ggplot2)
+ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) + 
+  geom_point() +
+  stat_smooth(method = "lm", col = "red") +
+  labs(title = paste("Adj R2 = ",signif(summary(fit)$adj.r.squared, 5),
+                     "Intercept =",signif(fit$coef[[1]],5 ),
+                     " Slope =",signif(fit$coef[[2]], 5),
+                     " P =",signif(summary(fit)$coef[2,4], 5)))
+}
+
+ggplotRegression(MODEL)
+```
+
+
+```{r}
+railroads <- grep("RR", DATA$property, value = TRUE)
+utilities <- c(grep("Water", DATA$property, value = TRUE), 
+               grep("Electric", DATA$property, value = TRUE))
+
+DATA <- DATA %>% 
+          mutate(pricetype = ifelse(property %in% railroads, "railroad", 
+                               ifelse(property %in% utilities, "utility", 
+                                 "buildable")))
+table(DATA$pricetype)
+```
+
+
+```{r}
+ggplot(DATA, aes(x = spaces, y = price, col = pricetype)) +
+  geom_smooth(method = lm)
+
+DATA %>% group_by(pricetype) %>% do(tidy(lm(price ~ spaces, .)))
+```
+
+http://www.cookbook-r.com/Graphs/Scatterplots_(ggplot2)/
+http://www.cyclismo.org/tutorial/R/linearLeastSquares.html
+https://cran.r-project.org/web/packages/broom/vignettes/broom_and_dplyr.html
